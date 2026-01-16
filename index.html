@@ -8,78 +8,34 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body {
-            background-color: #fff5f7;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
+        body { background-color: #fff5f7; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
         #root { width: 100%; max-width: 400px; }
-        .card {
-            background: white;
-            padding: 18px;
-            border-radius: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(240, 98, 146, 0.1);
-            border: 1px solid #ffeef2;
-            transition: all 0.3s ease;
-        }
+        .card { background: white; padding: 18px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(240, 98, 146, 0.1); border: 1px solid #ffeef2; position: relative; }
         .card.completed { border-color: #eee; box-shadow: none; background: #fdfdfd; }
         .card.waiting { border: 2px solid #ffc1d3; }
         .title { color: #d63384; text-align: center; margin-bottom: 25px; }
         .item-name { font-size: 16px; font-weight: 600; color: #444; }
         .completed .item-name { color: #bbb; text-decoration: line-through; }
-        .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; }
+        .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 8px; }
         .time-badge { background: #fce4ec; color: #d81b60; padding: 2px 8px; border-radius: 4px; margin: 0 5px; }
-        .btn-take {
-            background-color: #f06292;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(240, 98, 146, 0.3);
-        }
-        .btn-take:disabled { background-color: #ffb2cc; box-shadow: none; opacity: 0.8; }
-        .status-row { display: flex; align-items: center; margin-top: 8px; }
-        .time-input {
-            border: none;
-            color: #28a745;
-            font-weight: bold;
-            font-size: 14px;
-            background: #f0fff4;
-            padding: 2px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .btn-reset {
-            width: 100%;
-            background: none;
-            border: none;
-            color: #bbb;
-            text-decoration: underline;
-            margin-top: 30px;
-            font-size: 13px;
-            cursor: pointer;
-        }
+        .btn-take { background-color: #f06292; color: white; border: none; padding: 10px 20px; border-radius: 25px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.3); }
+        .btn-take.waiting-style { background-color: #ffb2cc; box-shadow: none; opacity: 0.9; }
+        .time-input { border: none; color: #28a745; font-weight: bold; font-size: 14px; background: #f0fff4; padding: 2px 5px; border-radius: 4px; }
+        .btn-reset { width: 100%; background: none; border: none; color: #bbb; text-decoration: underline; margin-top: 30px; font-size: 12px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect } = React;
 
         const INITIAL_DATA = [
-            { id: 1, name: "空腹：燕窩 + 膠原蛋白", type: "fasting", status: "pending", lastTaken: null },
-            { id: 2, name: "早上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null },
-            { id: 3, name: "早餐後：新寶納多 + 藻油", type: "iron", status: "pending", lastTaken: null },
-            { id: 4, name: "午/晚餐後：好菌 + B鐵鋅", type: "iron", status: "pending", lastTaken: null },
-            { id: 5, name: "晚上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null },
-            { id: 6, name: "睡前：雙鈣鎂 + 速鎂膠囊", type: "calcium", status: "pending", lastTaken: null }
+            { id: 1, name: "空腹：燕窩 + 膠原蛋白", type: "short", status: "pending", lastTaken: null },
+            { id: 2, name: "早上中藥 (3匙)", type: "short", status: "pending", lastTaken: null },
+            { id: 3, name: "早餐後：新寶納多 + 藻油", type: "long", status: "pending", lastTaken: null },
+            { id: 4, name: "午/晚餐後：好菌 + B鐵鋅", type: "short", status: "pending", lastTaken: null },
+            { id: 5, name: "晚上中藥 (3匙)", type: "medium", status: "pending", lastTaken: null },
+            { id: 6, name: "睡前：雙鈣鎂 + 速鎂膠囊", type: "none", status: "pending", lastTaken: null }
         ];
 
         function App() {
@@ -88,9 +44,9 @@
             const [currentTime, setCurrentTime] = useState(new Date());
 
             useEffect(() => {
-                const savedData = localStorage.getItem("preg_pills");
-                const savedInfo = localStorage.getItem("preg_info");
-                const savedDate = localStorage.getItem("preg_date");
+                const savedData = localStorage.getItem("preg_pills_v3");
+                const savedInfo = localStorage.getItem("preg_info_v3");
+                const savedDate = localStorage.getItem("preg_date_v3");
                 const today = new Date().toDateString();
 
                 if (savedData && savedDate === today) {
@@ -99,36 +55,36 @@
                 } else {
                     setItems(INITIAL_DATA);
                     setLastTakenInfo(null);
-                    localStorage.setItem("preg_date", today);
+                    localStorage.setItem("preg_date_v3", today);
                 }
-
-                const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+                const timer = setInterval(() => setCurrentTime(new Date()), 10000);
                 return () => clearInterval(timer);
             }, []);
 
             useEffect(() => {
                 if (items.length > 0) {
-                    localStorage.setItem("preg_pills", JSON.stringify(items));
-                    localStorage.setItem("preg_info", JSON.stringify(lastTakenInfo));
+                    localStorage.setItem("preg_pills_v3", JSON.stringify(items));
+                    localStorage.setItem("preg_info_v3", JSON.stringify(lastTakenInfo));
                 }
             }, [items, lastTakenInfo]);
 
-            const handleTake = (id, index) => {
-                const now = new Date();
-                updateItem(id, index, now);
-            };
-
             const updateItem = (id, index, dateObj) => {
                 const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
-                const waitMins = (items[index].type === "iron" || items[index].type === "calcium") ? 120 : 60;
                 
-                setLastTakenInfo({ index, targetTime: dateObj.getTime() + (waitMins * 60000) });
-                setItems(items.map(item => item.id === id ? { ...item, status: "completed", lastTaken: timeStr } : item));
-            };
+                // 根據當前點擊的類型決定「下一劑」要等多久
+                const currentType = items[index].type;
+                let waitMins = 0;
+                if (currentType === "short") waitMins = 60;        // 間隔 1 小時
+                else if (currentType === "medium") waitMins = 120; // 間隔 2 小時
+                else if (currentType === "long") waitMins = 240;   // 間隔 4 小時
+                
+                if (waitMins > 0) {
+                    setLastTakenInfo({ index, targetTime: dateObj.getTime() + (waitMins * 60000) });
+                } else {
+                    setLastTakenInfo(null); // 最後一項不設提醒
+                }
 
-            const handleUndo = (id) => {
-                setItems(items.map(item => item.id === id ? { ...item, status: "pending", lastTaken: null } : item));
-                setLastTakenInfo(null);
+                setItems(items.map(item => item.id === id ? { ...item, status: "completed", lastTaken: timeStr } : item));
             };
 
             return (
@@ -142,45 +98,36 @@
                         return (
                             <div key={item.id} className={`card ${item.status === 'completed' ? 'completed' : ''} ${isWaiting ? 'waiting' : ''}`}>
                                 {isWaiting && (
-                                    <div className="time-label">
-                                        ⏳ 建議於 <span className="time-badge">{targetStr}</span> 後服用
-                                    </div>
+                                    <div className="time-label">⏳ 建議於 <span className="time-badge">{targetStr}</span> 後服用</div>
                                 )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ flex: 1 }}>
                                         <div className="item-name">{item.name}</div>
                                         {item.status === 'completed' && (
-                                            <div className="status-row">
-                                                <input 
-                                                    type="time" 
-                                                    className="time-input" 
-                                                    value={item.lastTaken} 
+                                            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center' }}>
+                                                <input type="time" className="time-input" value={item.lastTaken} 
                                                     onChange={(e) => {
                                                         const [h, m] = e.target.value.split(':');
                                                         const d = new Date(); d.setHours(h, m);
                                                         updateItem(item.id, index, d);
                                                     }}
                                                 />
-                                                <button onClick={() => handleUndo(item.id)} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px', cursor:'pointer'}}>撤銷</button>
+                                                <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px', cursor:'pointer'}}>撤銷</button>
                                             </div>
                                         )}
                                     </div>
                                     {item.status === 'pending' && (
-                                        <button className="btn-take" onClick={() => handleTake(item.id, index)} disabled={isWaiting}>
-                                            吃過了
-                                        </button>
+                                        <button className={`btn-take ${isWaiting ? 'waiting-style' : ''}`} onClick={() => updateItem(item.id, index, new Date())}>吃過了</button>
                                     )}
                                 </div>
                             </div>
                         );
                     })}
-                    <button className="btn-reset" onClick={() => { if(confirm("確定重置今日清單？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
+                    <button className="btn-reset" onClick={() => { if(confirm("確定重置紀錄？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
                 </div>
             );
         }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
