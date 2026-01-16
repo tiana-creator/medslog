@@ -1,82 +1,143 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的吃藥紀錄本</title>
-    <style>
-        body { font-family: sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { color: #333; text-align: center; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        ul { list-style: none; padding: 0; }
-        li { background: #fff; border-bottom: 1px solid #eee; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .time { font-size: 0.8rem; color: #888; }
-        .delete-btn { background: #ff4d4d; font-size: 12px; padding: 5px 10px; }
-    </style>
-</head>
-<body>
+import React, { useState, useEffect } from "react";
 
-<div class="card">
-    <h2>💊 吃藥紀錄本</h2>
-    <div class="input-group">
-        <input type="text" id="medicineInput" placeholder="輸入藥物名稱...">
-        <button onclick="addRecord()">記錄</button>
+const INITIAL_DATA = [
+  { id: 1, name: "空腹：燕窩 + 膠原蛋白", type: "fasting", status: "pending", lastTaken: null, takenTimestamp: null },
+  { id: 2, name: "早上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null, takenTimestamp: null },
+  { id: 3, name: "早餐後：新寶納多 + 藻油", type: "iron", status: "pending", lastTaken: null, takenTimestamp: null },
+  { id: 4, name: "午/晚餐後：好菌 + B鐵鋅", type: "iron", status: "pending", lastTaken: null, takenTimestamp: null },
+  { id: 5, name: "晚上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null, takenTimestamp: null },
+  { id: 6, name: "睡前：雙鈣鎂 + 速鎂膠囊", type: "calcium", status: "pending", lastTaken: null, takenTimestamp: null }
+];
+
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [view, setView] = useState("today"); // "today" 或 "history"
+  const [history, setHistory] = useState({});
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastTakenInfo, setLastTakenInfo] = useState(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const savedData = localStorage.getItem("pregnancy_pills_data");
+    const savedInfo = localStorage.getItem("last_taken_info");
+    const savedHistory = localStorage.getItem("pregnancy_history");
+    const savedDate = localStorage.getItem("pill_date");
+    const today = new Date().toDateString();
+
+    if (savedData && savedDate === today) {
+      setItems(JSON.parse(savedData));
+      if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
+    } else {
+      // 換日存檔邏輯
+      if (savedDate && savedData) {
+        saveDayToHistory(savedDate, JSON.parse(savedData));
+      }
+      setItems(INITIAL_DATA);
+      setLastTakenInfo(null);
+      localStorage.setItem("pill_date", today);
+    }
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
+  }, []);
+
+  const saveDayToHistory = (dateStr, dayData) => {
+    const completedCount = dayData.filter(i => i.status === 'completed').length;
+    const newHistory = { ...history, [dateStr]: completedCount };
+    setHistory(newHistory);
+    localStorage.setItem("pregnancy_history", JSON.stringify(newHistory));
+  };
+
+  useEffect(() => {
+    if (items.length > 0) {
+      localStorage.setItem("pregnancy_pills_data", JSON.stringify(items));
+      localStorage.setItem("last_taken_info", JSON.stringify(lastTakenInfo));
+    }
+  }, [items, lastTakenInfo]);
+
+  const handleTake = (id, index) => {
+    const now = new Date();
+    updateItemTime(id, index, now);
+  };
+
+  const updateItemTime = (id, index, dateObj) => {
+    const timeString = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+    const waitMinutes = (items[index].type === "iron" || items[index].type === "calcium") ? 120 : 60;
+    
+    setLastTakenInfo({ index, targetTime: dateObj.getTime() + waitMinutes * 60000 });
+    
+    setItems(items.map(item => item.id === id ? 
+      { ...item, status: "completed", lastTaken: timeString, takenTimestamp: dateObj.getTime() } : item
+    ));
+  };
+
+  const handleHistoryIcon = (count) => {
+    if (count === 6) return "⭐";
+    if (count >= 3) return "😊";
+    return "⭕";
+  };
+
+  return (
+    <div style={{ maxWidth: '400px', margin: '0 auto', padding: '20px', backgroundColor: '#fff5f7', minHeight: '100vh', fontFamily: '-apple-system, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+        <button onClick={() => setView("today")} style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', backgroundColor: view === 'today' ? '#f06292' : '#ddd', color: 'white' }}>今日紀錄</button>
+        <button onClick={() => setView("history")} style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', backgroundColor: view === 'history' ? '#f06292' : '#ddd', color: 'white' }}>打卡成就</button>
+      </div>
+
+      {view === "today" ? (
+        <div>
+          <h2 style={{ color: '#d63384', textAlign: 'center' }}>🤰 今日保健清單</h2>
+          {items.map((item, index) => {
+            const isNext = lastTakenInfo && index === lastTakenInfo.index + 1;
+            const isWaiting = isNext && currentTime.getTime() < lastTakenInfo.targetTime;
+            return (
+              <div key={item.id} style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '15px', marginBottom: '12px', border: isWaiting ? '1.5px solid #ffc1d3' : '1px solid #eee' }}>
+                {isWaiting && <div style={{ fontSize: '12px', color: '#e91e63', marginBottom: '5px' }}>⏳ 建議於 {new Date(lastTakenInfo.targetTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} 後服用</div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', color: item.status === 'completed' ? '#bbb' : '#444' }}>{item.name}</div>
+                    {item.status === 'completed' && (
+                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
+                        <input 
+                          type="time" 
+                          value={item.lastTaken} 
+                          onChange={(e) => {
+                            const [h, m] = e.target.value.split(':');
+                            const newDate = new Date(); newDate.setHours(h, m);
+                            updateItemTime(item.id, index, newDate);
+                          }}
+                          style={{ border: 'none', color: '#28a745', fontWeight: '500', backgroundColor: '#f0fff4', borderRadius: '4px' }}
+                        />
+                        <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{ marginLeft: '10px', background: 'none', border: 'none', fontSize: '10px', color: '#999' }}>撤銷</button>
+                      </div>
+                    )}
+                  </div>
+                  {item.status === 'pending' && (
+                    <button onClick={() => handleTake(item.id, index)} style={{ backgroundColor: isWaiting ? '#ffb2cc' : '#f06292', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer' }}>吃過了</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <button onClick={() => {if(window.confirm("確定重置？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); }}} style={{ width: '100%', marginTop: '20px', background: 'none', border: 'none', color: '#bbb', textDecoration: 'underline' }}>手動重置今日紀錄</button>
+        </div>
+      ) : (
+        <div>
+          <h2 style={{ color: '#d63384', textAlign: 'center' }}>🏆 打卡成就牆</h2>
+          <div style={{ backgroundColor: '#fff', borderRadius: '15px', padding: '20px' }}>
+            {Object.keys(history).length === 0 && <p style={{ textAlign: 'center', color: '#999' }}>明天換日後就會出現紀錄囉！</p>}
+            {Object.entries(history).reverse().map(([date, count]) => (
+              <div key={date} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee' }}>
+                <span style={{ color: '#666' }}>{new Date(date).toLocaleDateString()}</span>
+                <span style={{ fontSize: '18px' }}>{handleHistoryIcon(count)} <small style={{ fontSize: '12px', color: '#999' }}>({count}/6)</small></span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: '20px', fontSize: '13px', color: '#d63384', textAlign: 'center' }}>⭐: 完美達成 | 😊: 超過一半 | ⭕: 加油</div>
+        </div>
+      )}
     </div>
-    <ul id="recordList"></ul>
-</div>
-
-<script>
-    // 載入舊有紀錄
-    window.onload = () => {
-        const saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
-        saved.forEach(item => renderRecord(item));
-    };
-
-    function addRecord() {
-        const input = document.getElementById('medicineInput');
-        if (!input.value) return;
-
-        const record = {
-            id: Date.now(),
-            name: input.value,
-            time: new Date().toLocaleString()
-        };
-
-        renderRecord(record);
-        saveRecord(record);
-        input.value = '';
-    }
-
-    function renderRecord(record) {
-        const li = document.createElement('li');
-        li.setAttribute('data-id', record.id);
-        li.innerHTML = `
-            <div>
-                <strong>${record.name}</strong><br>
-                <span class="time">${record.time}</span>
-            </div>
-            <button class="delete-btn" onclick="deleteRecord(${record.id})">刪除</button>
-        `;
-        document.getElementById('recordList').prepend(li);
-    }
-
-    function saveRecord(record) {
-        const saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
-        saved.push(record);
-        localStorage.setItem('pillRecords', JSON.stringify(saved));
-    }
-
-    function deleteRecord(id) {
-        let saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
-        saved = saved.filter(item => item.id !== id);
-        localStorage.setItem('pillRecords', JSON.stringify(saved));
-        document.querySelector(`li[data-id="${id}"]`).remove();
-    }
-</script>
-
-</body>
-</html>
+  );
+}
