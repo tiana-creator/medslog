@@ -1,43 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh-TW">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<meta name="theme-color" content="#000000">
-	<!--
-      manifest.json provides metadata used when your web app is added to the
-      homescreen on Android. See https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/
-    -->
-	<link rel="manifest" href="%PUBLIC_URL%/manifest.json">
-	<link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
-	<!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-	<title>React App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的吃藥紀錄本</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #333; text-align: center; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        ul { list-style: none; padding: 0; }
+        li { background: #fff; border-bottom: 1px solid #eee; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .time { font-size: 0.8rem; color: #888; }
+        .delete-btn { background: #ff4d4d; font-size: 12px; padding: 5px 10px; }
+    </style>
 </head>
-
 <body>
-	<noscript>
-		You need to enable JavaScript to run this app.
-	</noscript>
-	<div id="root"></div>
-	<!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+<div class="card">
+    <h2>💊 吃藥紀錄本</h2>
+    <div class="input-group">
+        <input type="text" id="medicineInput" placeholder="輸入藥物名稱...">
+        <button onclick="addRecord()">記錄</button>
+    </div>
+    <ul id="recordList"></ul>
+</div>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+<script>
+    // 載入舊有紀錄
+    window.onload = () => {
+        const saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
+        saved.forEach(item => renderRecord(item));
+    };
+
+    function addRecord() {
+        const input = document.getElementById('medicineInput');
+        if (!input.value) return;
+
+        const record = {
+            id: Date.now(),
+            name: input.value,
+            time: new Date().toLocaleString()
+        };
+
+        renderRecord(record);
+        saveRecord(record);
+        input.value = '';
+    }
+
+    function renderRecord(record) {
+        const li = document.createElement('li');
+        li.setAttribute('data-id', record.id);
+        li.innerHTML = `
+            <div>
+                <strong>${record.name}</strong><br>
+                <span class="time">${record.time}</span>
+            </div>
+            <button class="delete-btn" onclick="deleteRecord(${record.id})">刪除</button>
+        `;
+        document.getElementById('recordList').prepend(li);
+    }
+
+    function saveRecord(record) {
+        const saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
+        saved.push(record);
+        localStorage.setItem('pillRecords', JSON.stringify(saved));
+    }
+
+    function deleteRecord(id) {
+        let saved = JSON.parse(localStorage.getItem('pillRecords') || '[]');
+        saved = saved.filter(item => item.id !== id);
+        localStorage.setItem('pillRecords', JSON.stringify(saved));
+        document.querySelector(`li[data-id="${id}"]`).remove();
+    }
+</script>
+
 </body>
-
 </html>
