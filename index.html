@@ -1,143 +1,186 @@
-import React, { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>孕期保健小幫手</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            background-color: #fff5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        #root { width: 100%; max-width: 400px; }
+        .card {
+            background: white;
+            padding: 18px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(240, 98, 146, 0.1);
+            border: 1px solid #ffeef2;
+            transition: all 0.3s ease;
+        }
+        .card.completed { border-color: #eee; box-shadow: none; background: #fdfdfd; }
+        .card.waiting { border: 2px solid #ffc1d3; }
+        .title { color: #d63384; text-align: center; margin-bottom: 25px; }
+        .item-name { font-size: 16px; font-weight: 600; color: #444; }
+        .completed .item-name { color: #bbb; text-decoration: line-through; }
+        .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; }
+        .time-badge { background: #fce4ec; color: #d81b60; padding: 2px 8px; border-radius: 4px; margin: 0 5px; }
+        .btn-take {
+            background-color: #f06292;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(240, 98, 146, 0.3);
+        }
+        .btn-take:disabled { background-color: #ffb2cc; box-shadow: none; opacity: 0.8; }
+        .status-row { display: flex; align-items: center; margin-top: 8px; }
+        .time-input {
+            border: none;
+            color: #28a745;
+            font-weight: bold;
+            font-size: 14px;
+            background: #f0fff4;
+            padding: 2px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-reset {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #bbb;
+            text-decoration: underline;
+            margin-top: 30px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-const INITIAL_DATA = [
-  { id: 1, name: "空腹：燕窩 + 膠原蛋白", type: "fasting", status: "pending", lastTaken: null, takenTimestamp: null },
-  { id: 2, name: "早上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null, takenTimestamp: null },
-  { id: 3, name: "早餐後：新寶納多 + 藻油", type: "iron", status: "pending", lastTaken: null, takenTimestamp: null },
-  { id: 4, name: "午/晚餐後：好菌 + B鐵鋅", type: "iron", status: "pending", lastTaken: null, takenTimestamp: null },
-  { id: 5, name: "晚上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null, takenTimestamp: null },
-  { id: 6, name: "睡前：雙鈣鎂 + 速鎂膠囊", type: "calcium", status: "pending", lastTaken: null, takenTimestamp: null }
-];
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-export default function App() {
-  const [items, setItems] = useState([]);
-  const [view, setView] = useState("today"); // "today" 或 "history"
-  const [history, setHistory] = useState({});
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [lastTakenInfo, setLastTakenInfo] = useState(null);
+        const INITIAL_DATA = [
+            { id: 1, name: "空腹：燕窩 + 膠原蛋白", type: "fasting", status: "pending", lastTaken: null },
+            { id: 2, name: "早上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null },
+            { id: 3, name: "早餐後：新寶納多 + 藻油", type: "iron", status: "pending", lastTaken: null },
+            { id: 4, name: "午/晚餐後：好菌 + B鐵鋅", type: "iron", status: "pending", lastTaken: null },
+            { id: 5, name: "晚上中藥 (3匙)", type: "herb", status: "pending", lastTaken: null },
+            { id: 6, name: "睡前：雙鈣鎂 + 速鎂膠囊", type: "calcium", status: "pending", lastTaken: null }
+        ];
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
-    return () => clearInterval(timer);
-  }, []);
+        function App() {
+            const [items, setItems] = useState([]);
+            const [lastTakenInfo, setLastTakenInfo] = useState(null);
+            const [currentTime, setCurrentTime] = useState(new Date());
 
-  useEffect(() => {
-    const savedData = localStorage.getItem("pregnancy_pills_data");
-    const savedInfo = localStorage.getItem("last_taken_info");
-    const savedHistory = localStorage.getItem("pregnancy_history");
-    const savedDate = localStorage.getItem("pill_date");
-    const today = new Date().toDateString();
+            useEffect(() => {
+                const savedData = localStorage.getItem("preg_pills");
+                const savedInfo = localStorage.getItem("preg_info");
+                const savedDate = localStorage.getItem("preg_date");
+                const today = new Date().toDateString();
 
-    if (savedData && savedDate === today) {
-      setItems(JSON.parse(savedData));
-      if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
-    } else {
-      // 換日存檔邏輯
-      if (savedDate && savedData) {
-        saveDayToHistory(savedDate, JSON.parse(savedData));
-      }
-      setItems(INITIAL_DATA);
-      setLastTakenInfo(null);
-      localStorage.setItem("pill_date", today);
-    }
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
-  }, []);
+                if (savedData && savedDate === today) {
+                    setItems(JSON.parse(savedData));
+                    if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
+                } else {
+                    setItems(INITIAL_DATA);
+                    setLastTakenInfo(null);
+                    localStorage.setItem("preg_date", today);
+                }
 
-  const saveDayToHistory = (dateStr, dayData) => {
-    const completedCount = dayData.filter(i => i.status === 'completed').length;
-    const newHistory = { ...history, [dateStr]: completedCount };
-    setHistory(newHistory);
-    localStorage.setItem("pregnancy_history", JSON.stringify(newHistory));
-  };
+                const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+                return () => clearInterval(timer);
+            }, []);
 
-  useEffect(() => {
-    if (items.length > 0) {
-      localStorage.setItem("pregnancy_pills_data", JSON.stringify(items));
-      localStorage.setItem("last_taken_info", JSON.stringify(lastTakenInfo));
-    }
-  }, [items, lastTakenInfo]);
+            useEffect(() => {
+                if (items.length > 0) {
+                    localStorage.setItem("preg_pills", JSON.stringify(items));
+                    localStorage.setItem("preg_info", JSON.stringify(lastTakenInfo));
+                }
+            }, [items, lastTakenInfo]);
 
-  const handleTake = (id, index) => {
-    const now = new Date();
-    updateItemTime(id, index, now);
-  };
+            const handleTake = (id, index) => {
+                const now = new Date();
+                updateItem(id, index, now);
+            };
 
-  const updateItemTime = (id, index, dateObj) => {
-    const timeString = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
-    const waitMinutes = (items[index].type === "iron" || items[index].type === "calcium") ? 120 : 60;
-    
-    setLastTakenInfo({ index, targetTime: dateObj.getTime() + waitMinutes * 60000 });
-    
-    setItems(items.map(item => item.id === id ? 
-      { ...item, status: "completed", lastTaken: timeString, takenTimestamp: dateObj.getTime() } : item
-    ));
-  };
+            const updateItem = (id, index, dateObj) => {
+                const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+                const waitMins = (items[index].type === "iron" || items[index].type === "calcium") ? 120 : 60;
+                
+                setLastTakenInfo({ index, targetTime: dateObj.getTime() + (waitMins * 60000) });
+                setItems(items.map(item => item.id === id ? { ...item, status: "completed", lastTaken: timeStr } : item));
+            };
 
-  const handleHistoryIcon = (count) => {
-    if (count === 6) return "⭐";
-    if (count >= 3) return "😊";
-    return "⭕";
-  };
+            const handleUndo = (id) => {
+                setItems(items.map(item => item.id === id ? { ...item, status: "pending", lastTaken: null } : item));
+                setLastTakenInfo(null);
+            };
 
-  return (
-    <div style={{ maxWidth: '400px', margin: '0 auto', padding: '20px', backgroundColor: '#fff5f7', minHeight: '100vh', fontFamily: '-apple-system, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setView("today")} style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', backgroundColor: view === 'today' ? '#f06292' : '#ddd', color: 'white' }}>今日紀錄</button>
-        <button onClick={() => setView("history")} style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', backgroundColor: view === 'history' ? '#f06292' : '#ddd', color: 'white' }}>打卡成就</button>
-      </div>
-
-      {view === "today" ? (
-        <div>
-          <h2 style={{ color: '#d63384', textAlign: 'center' }}>🤰 今日保健清單</h2>
-          {items.map((item, index) => {
-            const isNext = lastTakenInfo && index === lastTakenInfo.index + 1;
-            const isWaiting = isNext && currentTime.getTime() < lastTakenInfo.targetTime;
             return (
-              <div key={item.id} style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '15px', marginBottom: '12px', border: isWaiting ? '1.5px solid #ffc1d3' : '1px solid #eee' }}>
-                {isWaiting && <div style={{ fontSize: '12px', color: '#e91e63', marginBottom: '5px' }}>⏳ 建議於 {new Date(lastTakenInfo.targetTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} 後服用</div>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', color: item.status === 'completed' ? '#bbb' : '#444' }}>{item.name}</div>
-                    {item.status === 'completed' && (
-                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
-                        <input 
-                          type="time" 
-                          value={item.lastTaken} 
-                          onChange={(e) => {
-                            const [h, m] = e.target.value.split(':');
-                            const newDate = new Date(); newDate.setHours(h, m);
-                            updateItemTime(item.id, index, newDate);
-                          }}
-                          style={{ border: 'none', color: '#28a745', fontWeight: '500', backgroundColor: '#f0fff4', borderRadius: '4px' }}
-                        />
-                        <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{ marginLeft: '10px', background: 'none', border: 'none', fontSize: '10px', color: '#999' }}>撤銷</button>
-                      </div>
-                    )}
-                  </div>
-                  {item.status === 'pending' && (
-                    <button onClick={() => handleTake(item.id, index)} style={{ backgroundColor: isWaiting ? '#ffb2cc' : '#f06292', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer' }}>吃過了</button>
-                  )}
+                <div>
+                    <h2 className="title">🤰 孕期保健清單</h2>
+                    {items.map((item, index) => {
+                        const isNext = lastTakenInfo && index === lastTakenInfo.index + 1;
+                        const isWaiting = isNext && currentTime.getTime() < lastTakenInfo.targetTime;
+                        const targetStr = isNext ? new Date(lastTakenInfo.targetTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+
+                        return (
+                            <div key={item.id} className={`card ${item.status === 'completed' ? 'completed' : ''} ${isWaiting ? 'waiting' : ''}`}>
+                                {isWaiting && (
+                                    <div className="time-label">
+                                        ⏳ 建議於 <span className="time-badge">{targetStr}</span> 後服用
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="item-name">{item.name}</div>
+                                        {item.status === 'completed' && (
+                                            <div className="status-row">
+                                                <input 
+                                                    type="time" 
+                                                    className="time-input" 
+                                                    value={item.lastTaken} 
+                                                    onChange={(e) => {
+                                                        const [h, m] = e.target.value.split(':');
+                                                        const d = new Date(); d.setHours(h, m);
+                                                        updateItem(item.id, index, d);
+                                                    }}
+                                                />
+                                                <button onClick={() => handleUndo(item.id)} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px', cursor:'pointer'}}>撤銷</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {item.status === 'pending' && (
+                                        <button className="btn-take" onClick={() => handleTake(item.id, index)} disabled={isWaiting}>
+                                            吃過了
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <button className="btn-reset" onClick={() => { if(confirm("確定重置今日清單？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
                 </div>
-              </div>
             );
-          })}
-          <button onClick={() => {if(window.confirm("確定重置？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); }}} style={{ width: '100%', marginTop: '20px', background: 'none', border: 'none', color: '#bbb', textDecoration: 'underline' }}>手動重置今日紀錄</button>
-        </div>
-      ) : (
-        <div>
-          <h2 style={{ color: '#d63384', textAlign: 'center' }}>🏆 打卡成就牆</h2>
-          <div style={{ backgroundColor: '#fff', borderRadius: '15px', padding: '20px' }}>
-            {Object.keys(history).length === 0 && <p style={{ textAlign: 'center', color: '#999' }}>明天換日後就會出現紀錄囉！</p>}
-            {Object.entries(history).reverse().map(([date, count]) => (
-              <div key={date} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee' }}>
-                <span style={{ color: '#666' }}>{new Date(date).toLocaleDateString()}</span>
-                <span style={{ fontSize: '18px' }}>{handleHistoryIcon(count)} <small style={{ fontSize: '12px', color: '#999' }}>({count}/6)</small></span>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '20px', fontSize: '13px', color: '#d63384', textAlign: 'center' }}>⭐: 完美達成 | 😊: 超過一半 | ⭕: 加油</div>
-        </div>
-      )}
-    </div>
-  );
-}
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
