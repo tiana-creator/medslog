@@ -19,8 +19,8 @@
         .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
         .time-badge { background: #fce4ec; color: #d81b60; padding: 2px 8px; border-radius: 4px; }
         .btn-take { background-color: #f06292; color: white; border: none; padding: 10px 20px; border-radius: 25px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.3); }
-        .btn-alarm { background: #d63384; color: #fff; border: none; padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; font-weight: bold; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .btn-alarm { background: #d63384; color: #fff; border: none; padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer; font-weight: bold; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .time-input { border: none; color: #28a745; font-weight: bold; font-size: 14px; background: #f0fff4; padding: 2px 5px; border-radius: 4px; }
         .btn-reset { width: 100%; background: none; border: none; color: #bbb; text-decoration: underline; margin-top: 30px; font-size: 12px; cursor: pointer; }
     </style>
@@ -45,9 +45,9 @@
             const [currentTime, setCurrentTime] = useState(new Date());
 
             useEffect(() => {
-                const savedData = localStorage.getItem("preg_pills_v5");
-                const savedInfo = localStorage.getItem("preg_info_v5");
-                const savedDate = localStorage.getItem("preg_date_v5");
+                const savedData = localStorage.getItem("preg_pills_v6");
+                const savedInfo = localStorage.getItem("preg_info_v6");
+                const savedDate = localStorage.getItem("preg_date_v6");
                 const today = new Date().toDateString();
 
                 if (savedData && savedDate === today) {
@@ -55,15 +55,16 @@
                     if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
                 } else {
                     setItems(INITIAL_DATA); setLastTakenInfo(null);
-                    localStorage.setItem("preg_date_v5", today);
+                    localStorage.setItem("preg_date_v6", today);
                 }
-                setInterval(() => setCurrentTime(new Date()), 10000);
+                const timer = setInterval(() => setCurrentTime(new Date()), 10000);
+                return () => clearInterval(timer);
             }, []);
 
             useEffect(() => {
                 if (items.length > 0) {
-                    localStorage.setItem("preg_pills_v5", JSON.stringify(items));
-                    localStorage.setItem("preg_info_v5", JSON.stringify(lastTakenInfo));
+                    localStorage.setItem("preg_pills_v6", JSON.stringify(items));
+                    localStorage.setItem("preg_info_v6", JSON.stringify(lastTakenInfo));
                 }
             }, [items, lastTakenInfo]);
 
@@ -82,22 +83,17 @@
 
             const setReminder = (targetName, timestamp) => {
                 const targetDate = new Date(timestamp);
-                const title = encodeURIComponent(`該吃保健食品囉：${targetName}`);
+                const title = encodeURIComponent(`💊 該吃保健食品囉：${targetName}`);
                 
-                // 檢查是否為 iOS (iPhone/iPad)
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-                if (isIOS) {
-                    // iOS 使用提醒事項跳轉 (利用 x-apple-reminder 協議，部分機型支援)
-                    // 若不支援，則回退到日曆模式，日曆最穩定
-                    const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
-                    window.location.href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${startTime}&details=孕期提醒`;
-                } else {
-                    // Android 或其他系統開啟 Google 日曆
-                    const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
-                    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${startTime}`;
-                    window.open(url, '_blank');
-                }
+                // 格式化時間為 ISO 格式但移除符號 (YYYYMMDDTHHMMSSZ)
+                const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
+                // 結束時間設為 5 分鐘後
+                const endTime = new Date(timestamp + 5 * 60000).toISOString().replace(/-|:|\.\d+/g, '');
+                
+                // 加入「行程當下提醒」的參數 (add=0)
+                const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=孕期健康提醒&add=0`;
+                
+                window.open(url, '_blank');
             };
 
             return (
@@ -113,20 +109,22 @@
                                 {isWaiting && (
                                     <div className="time-label">
                                         <span>⏳ 建議 <span className="time-badge">{targetStr}</span> 後吃</span>
-                                        <button className="btn-alarm" onClick={() => setReminder(item.name, lastTakenInfo.targetTime)}>🔔 一鍵設提醒</button>
+                                        <button className="btn-alarm" onClick={() => setReminder(item.name, lastTakenInfo.targetTime)}>🔔 當下提醒</button>
                                     </div>
                                 )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ flex: 1 }}>
                                         <div className="item-name">{item.name}</div>
                                         {item.status === 'completed' && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <input type="time" className="time-input" value={item.lastTaken} onChange={(e) => {
-                                                    const [h, m] = e.target.value.split(':');
-                                                    const d = new Date(); d.setHours(h, m);
-                                                    updateItem(item.id, index, d);
-                                                }} />
-                                                <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px'}}>撤銷</button>
+                                            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center' }}>
+                                                <input type="time" className="time-input" value={item.lastTaken} 
+                                                    onChange={(e) => {
+                                                        const [h, m] = e.target.value.split(':');
+                                                        const d = new Date(); d.setHours(h, m);
+                                                        updateItem(item.id, index, d);
+                                                    }}
+                                                />
+                                                <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px', cursor:'pointer'}}>撤銷</button>
                                             </div>
                                         )}
                                     </div>
@@ -137,7 +135,7 @@
                             </div>
                         );
                     })}
-                    <button className="btn-reset" onClick={() => { if(confirm("確定重置？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
+                    <button className="btn-reset" onClick={() => { if(confirm("確定重置紀錄？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
                 </div>
             );
         }
