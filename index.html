@@ -16,10 +16,11 @@
         .title { color: #d63384; text-align: center; margin-bottom: 25px; }
         .item-name { font-size: 16px; font-weight: 600; color: #444; }
         .completed .item-name { color: #bbb; text-decoration: line-through; }
-        .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 8px; }
-        .time-badge { background: #fce4ec; color: #d81b60; padding: 2px 8px; border-radius: 4px; margin: 0 5px; }
+        .time-label { font-size: 12px; color: #e91e63; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .time-badge { background: #fce4ec; color: #d81b60; padding: 2px 8px; border-radius: 4px; }
         .btn-take { background-color: #f06292; color: white; border: none; padding: 10px 20px; border-radius: 25px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.3); }
-        .btn-take.waiting-style { background-color: #ffb2cc; box-shadow: none; opacity: 0.9; }
+        .btn-alarm { background: #d63384; color: #fff; border: none; padding: 4px 10px; border-radius: 12px; font-size: 11px; cursor: pointer; font-weight: bold; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         .time-input { border: none; color: #28a745; font-weight: bold; font-size: 14px; background: #f0fff4; padding: 2px 5px; border-radius: 4px; }
         .btn-reset { width: 100%; background: none; border: none; color: #bbb; text-decoration: underline; margin-top: 30px; font-size: 12px; cursor: pointer; }
     </style>
@@ -44,47 +45,59 @@
             const [currentTime, setCurrentTime] = useState(new Date());
 
             useEffect(() => {
-                const savedData = localStorage.getItem("preg_pills_v3");
-                const savedInfo = localStorage.getItem("preg_info_v3");
-                const savedDate = localStorage.getItem("preg_date_v3");
+                const savedData = localStorage.getItem("preg_pills_v5");
+                const savedInfo = localStorage.getItem("preg_info_v5");
+                const savedDate = localStorage.getItem("preg_date_v5");
                 const today = new Date().toDateString();
 
                 if (savedData && savedDate === today) {
                     setItems(JSON.parse(savedData));
                     if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
                 } else {
-                    setItems(INITIAL_DATA);
-                    setLastTakenInfo(null);
-                    localStorage.setItem("preg_date_v3", today);
+                    setItems(INITIAL_DATA); setLastTakenInfo(null);
+                    localStorage.setItem("preg_date_v5", today);
                 }
-                const timer = setInterval(() => setCurrentTime(new Date()), 10000);
-                return () => clearInterval(timer);
+                setInterval(() => setCurrentTime(new Date()), 10000);
             }, []);
 
             useEffect(() => {
                 if (items.length > 0) {
-                    localStorage.setItem("preg_pills_v3", JSON.stringify(items));
-                    localStorage.setItem("preg_info_v3", JSON.stringify(lastTakenInfo));
+                    localStorage.setItem("preg_pills_v5", JSON.stringify(items));
+                    localStorage.setItem("preg_info_v5", JSON.stringify(lastTakenInfo));
                 }
             }, [items, lastTakenInfo]);
 
             const updateItem = (id, index, dateObj) => {
                 const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
-                
-                // 根據當前點擊的類型決定「下一劑」要等多久
-                const currentType = items[index].type;
-                let waitMins = 0;
-                if (currentType === "short") waitMins = 60;        // 間隔 1 小時
-                else if (currentType === "medium") waitMins = 120; // 間隔 2 小時
-                else if (currentType === "long") waitMins = 240;   // 間隔 4 小時
+                const type = items[index].type;
+                const waitMins = type === "short" ? 60 : (type === "medium" ? 120 : (type === "long" ? 240 : 0));
                 
                 if (waitMins > 0) {
                     setLastTakenInfo({ index, targetTime: dateObj.getTime() + (waitMins * 60000) });
                 } else {
-                    setLastTakenInfo(null); // 最後一項不設提醒
+                    setLastTakenInfo(null);
                 }
-
                 setItems(items.map(item => item.id === id ? { ...item, status: "completed", lastTaken: timeStr } : item));
+            };
+
+            const setReminder = (targetName, timestamp) => {
+                const targetDate = new Date(timestamp);
+                const title = encodeURIComponent(`該吃保健食品囉：${targetName}`);
+                
+                // 檢查是否為 iOS (iPhone/iPad)
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+                if (isIOS) {
+                    // iOS 使用提醒事項跳轉 (利用 x-apple-reminder 協議，部分機型支援)
+                    // 若不支援，則回退到日曆模式，日曆最穩定
+                    const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
+                    window.location.href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${startTime}&details=孕期提醒`;
+                } else {
+                    // Android 或其他系統開啟 Google 日曆
+                    const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
+                    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${startTime}`;
+                    window.open(url, '_blank');
+                }
             };
 
             return (
@@ -98,21 +111,22 @@
                         return (
                             <div key={item.id} className={`card ${item.status === 'completed' ? 'completed' : ''} ${isWaiting ? 'waiting' : ''}`}>
                                 {isWaiting && (
-                                    <div className="time-label">⏳ 建議於 <span className="time-badge">{targetStr}</span> 後服用</div>
+                                    <div className="time-label">
+                                        <span>⏳ 建議 <span className="time-badge">{targetStr}</span> 後吃</span>
+                                        <button className="btn-alarm" onClick={() => setReminder(item.name, lastTakenInfo.targetTime)}>🔔 一鍵設提醒</button>
+                                    </div>
                                 )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ flex: 1 }}>
                                         <div className="item-name">{item.name}</div>
                                         {item.status === 'completed' && (
-                                            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center' }}>
-                                                <input type="time" className="time-input" value={item.lastTaken} 
-                                                    onChange={(e) => {
-                                                        const [h, m] = e.target.value.split(':');
-                                                        const d = new Date(); d.setHours(h, m);
-                                                        updateItem(item.id, index, d);
-                                                    }}
-                                                />
-                                                <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px', cursor:'pointer'}}>撤銷</button>
+                                            <div style={{ marginTop: '8px' }}>
+                                                <input type="time" className="time-input" value={item.lastTaken} onChange={(e) => {
+                                                    const [h, m] = e.target.value.split(':');
+                                                    const d = new Date(); d.setHours(h, m);
+                                                    updateItem(item.id, index, d);
+                                                }} />
+                                                <button onClick={() => {setItems(items.map(i => i.id === item.id ? {...i, status:'pending', lastTaken:null} : i)); setLastTakenInfo(null);}} style={{marginLeft:'10px', background:'none', border:'none', color:'#bbb', fontSize:'11px'}}>撤銷</button>
                                             </div>
                                         )}
                                     </div>
@@ -123,7 +137,7 @@
                             </div>
                         );
                     })}
-                    <button className="btn-reset" onClick={() => { if(confirm("確定重置紀錄？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
+                    <button className="btn-reset" onClick={() => { if(confirm("確定重置？")) { setItems(INITIAL_DATA); setLastTakenInfo(null); } }}>手動重置今日紀錄</button>
                 </div>
             );
         }
