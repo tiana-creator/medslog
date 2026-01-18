@@ -45,9 +45,9 @@
             const [currentTime, setCurrentTime] = useState(new Date());
 
             useEffect(() => {
-                const savedData = localStorage.getItem("preg_pills_v6");
-                const savedInfo = localStorage.getItem("preg_info_v6");
-                const savedDate = localStorage.getItem("preg_date_v6");
+                const savedData = localStorage.getItem("preg_pills_v7");
+                const savedInfo = localStorage.getItem("preg_info_v7");
+                const savedDate = localStorage.getItem("preg_date_v7");
                 const today = new Date().toDateString();
 
                 if (savedData && savedDate === today) {
@@ -55,7 +55,7 @@
                     if (savedInfo) setLastTakenInfo(JSON.parse(savedInfo));
                 } else {
                     setItems(INITIAL_DATA); setLastTakenInfo(null);
-                    localStorage.setItem("preg_date_v6", today);
+                    localStorage.setItem("preg_date_v7", today);
                 }
                 const timer = setInterval(() => setCurrentTime(new Date()), 10000);
                 return () => clearInterval(timer);
@@ -63,8 +63,8 @@
 
             useEffect(() => {
                 if (items.length > 0) {
-                    localStorage.setItem("preg_pills_v6", JSON.stringify(items));
-                    localStorage.setItem("preg_info_v6", JSON.stringify(lastTakenInfo));
+                    localStorage.setItem("preg_pills_v7", JSON.stringify(items));
+                    localStorage.setItem("preg_info_v7", JSON.stringify(lastTakenInfo));
                 }
             }, [items, lastTakenInfo]);
 
@@ -85,12 +85,17 @@
                 const targetDate = new Date(timestamp);
                 const title = encodeURIComponent(`💊 該吃保健食品囉：${targetName}`);
                 
-                // 格式化時間為 ISO 格式但移除符號 (YYYYMMDDTHHMMSSZ)
-                const startTime = targetDate.toISOString().replace(/-|:|\.\d+/g, '');
-                // 結束時間設為 5 分鐘後
-                const endTime = new Date(timestamp + 5 * 60000).toISOString().replace(/-|:|\.\d+/g, '');
-                
-                // 加入「行程當下提醒」的參數 (add=0)
+                // 格式化為 Google 日曆要求的 YYYYMMDDTHHMMSSZ (UTC)
+                // 或是直接用本地時間格式 YYYYMMDDTHHMMSS
+                const formatTime = (d) => {
+                    const pad = (n) => n.toString().padStart(2, '0');
+                    return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+                };
+
+                const startTime = formatTime(targetDate);
+                const endTime = startTime; // 設為相同，則時長為 0
+
+                // 修正參數：移除可能導致邀請人員出現的參數，並強制開啟提醒
                 const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=孕期健康提醒&add=0`;
                 
                 window.open(url, '_blank');
